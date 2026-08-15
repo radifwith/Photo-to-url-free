@@ -236,11 +236,12 @@
       </div>
     </div>
 
-    <div class="field-label">Data URL</div>
+    <div class="field-label">Photo Link</div>
     <textarea id="output" readonly rows="5"></textarea>
 
     <div class="actions">
-      <button class="btn-copy" id="copyBtn">Copy URL</button>
+      <button class="btn-copy" id="copyBtn">Copy Link</button>
+      <a id="openLink" href="#" target="_blank" style="flex:1;"><button class="btn-again" type="button" style="width:100%;">Open</button></a>
     </div>
   </div>
 
@@ -254,6 +255,7 @@
 <script>
 const MAX_WIDTH = 450;
 const QUALITY = 0.20;
+const BASE_URL = 'https://radifwith.github.io/Photo-to-url-free/view.html';
 
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
@@ -303,17 +305,19 @@ function handleFile(file) {
       ctx.drawImage(img, 0, 0, w, h);
 
       const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+      const fullUrl = BASE_URL + '#' + encodeURIComponent(dataUrl);
 
       status.classList.remove('show');
       previewImg.src = dataUrl;
-      output.value = dataUrl;
+      output.value = fullUrl;
       metaSize.textContent = w + ' × ' + h + 'px';
-      metaLen.textContent = dataUrl.length.toLocaleString();
+      metaLen.textContent = fullUrl.length.toLocaleString();
 
       result.classList.add('show');
       againWrap.style.display = 'block';
-      copyBtn.textContent = 'Copy URL';
+      copyBtn.textContent = 'Copy Link';
       copyBtn.classList.remove('copied');
+      document.getElementById('openLink').href = fullUrl;
     };
     img.src = e.target.result;
   };
@@ -327,7 +331,7 @@ copyBtn.addEventListener('click', () => {
     copyBtn.textContent = 'Copied ✓';
     copyBtn.classList.add('copied');
     setTimeout(() => {
-      copyBtn.textContent = 'Copy URL';
+      copyBtn.textContent = 'Copy Link';
       copyBtn.classList.remove('copied');
     }, 1800);
   }).catch(() => {
