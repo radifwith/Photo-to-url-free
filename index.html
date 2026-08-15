@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo → URL</title>
+<style>
+  :root{
+    --bg:#0d0f12;
+    --panel:#16191d;
+    --line:#262a30;
+    --text:#e8eaed;
+    --sub:#8a9099;
+    --accent:#ffb020;
+    --accent-dim:#3a2e10;
+    --ok:#3ddc84;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 16px 60px;
+  }
+  .wrap{
+    width:100%;
+    max-width:480px;
+  }
+  header{
+    margin-bottom:22px;
+    text-align:left;
+  }
+  header .tag{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:block;
+    margin-bottom:8px;
+  }
+  h1{
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    color:var(--sub);
+    font-size:13.5px;
+    line-height:1.5;
+    margin:0;
+  }
+
+  .drop{
+    border:1.5px dashed var(--line);
+    border-radius:14px;
+    background:var(--panel);
+    padding:34px 18px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    position:relative;
+  }
+  .drop:active{background:#1b1f24;}
+  .drop.drag{border-color:var(--accent); background:var(--accent-dim);}
+  .drop-icon{
+    width:40px;height:40px;
+    margin:0 auto 12px;
+    color:var(--sub);
+  }
+  .drop-title{font-size:14.5px; font-weight:600; margin-bottom:4px;}
+  .drop-sub{font-size:12.5px; color:var(--sub);}
+  input[type=file]{display:none;}
+
+  .status{
+    display:none;
+    margin-top:16px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--sub);
+    text-align:center;
+  }
+  .status.show{display:block;}
+
+  .result{
+    display:none;
+    margin-top:22px;
+  }
+  .result.show{display:block;}
+
+  .preview-row{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .preview-row img{
+    width:76px;height:76px;
+    object-fit:cover;
+    border-radius:8px;
+    border:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .preview-meta{flex:1; min-width:0; padding-top:2px;}
+  .preview-meta .ok-line{
+    display:flex; align-items:center; gap:6px;
+    color:var(--ok); font-size:13px; font-weight:600; margin-bottom:6px;
+  }
+  .preview-meta .ok-line svg{width:15px;height:15px;flex-shrink:0;}
+  .meta-grid{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--sub);
+    line-height:1.7;
+  }
+  .meta-grid b{color:var(--text); font-weight:600;}
+
+  .field-label{
+    font-size:11.5px;
+    color:var(--sub);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin:0 0 8px;
+    font-family:var(--mono);
+  }
+  textarea{
+    width:100%;
+    background:#0a0c0e;
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:11.5px;
+    line-height:1.55;
+    padding:12px;
+    resize:vertical;
+    min-height:110px;
+    word-break:break-all;
+  }
+  textarea:focus{outline:none; border-color:var(--accent);}
+
+  .actions{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+  }
+  button{
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:600;
+    border:none;
+    border-radius:10px;
+    padding:12px 16px;
+    cursor:pointer;
+    flex:1;
+    transition:transform .1s ease, opacity .1s ease;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-copy{
+    background:var(--accent);
+    color:#1a1300;
+  }
+  .btn-copy.copied{
+    background:var(--ok);
+    color:#04220f;
+  }
+  .btn-again{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text);
+  }
+
+  .again-wrap{margin-top:22px; text-align:center;}
+  .again-wrap a{
+    color:var(--sub);
+    font-size:12.5px;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+
+  footer{
+    margin-top:36px;
+    text-align:center;
+    font-family:var(--mono);
+    font-size:10.5px;
+    color:#4a4f57;
+    letter-spacing:.04em;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="tag">Photo → Data URL</span>
+    <h1>Photo dile, URL pabe</h1>
+    <p>Photo select korun — automatically compress hoye ekটা text URL toiri hobe, jeta copy kore jekhane khushi paste kora jay.</p>
+  </header>
+
+  <label class="drop" id="dropZone">
+    <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+      <rect x="3" y="5" width="18" height="14" rx="2"/>
+      <circle cx="8.5" cy="10" r="1.5"/>
+      <path d="M21 15l-5-5-9 9" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="drop-title">Photo select korun</div>
+    <div class="drop-sub">Tap korun, othoba camera diye tulun</div>
+    <input type="file" id="fileInput" accept="image/*">
+  </label>
+
+  <div class="status" id="status">Processing…</div>
+
+  <div class="result" id="result">
+    <div class="preview-row">
+      <img id="previewImg" alt="preview">
+      <div class="preview-meta">
+        <div class="ok-line">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          URL toiri hoyeche
+        </div>
+        <div class="meta-grid">
+          Size: <b id="metaSize">—</b><br>
+          Length: <b id="metaLen">—</b> characters
+        </div>
+      </div>
+    </div>
+
+    <div class="field-label">Data URL</div>
+    <textarea id="output" readonly rows="5"></textarea>
+
+    <div class="actions">
+      <button class="btn-copy" id="copyBtn">Copy URL</button>
+    </div>
+  </div>
+
+  <div class="again-wrap" id="againWrap" style="display:none;">
+    <a id="againLink">Onno ekটা photo select korun</a>
+  </div>
+
+  <footer>QUALITY 20 · MAX WIDTH 450PX · JPEG</footer>
+</div>
+
+<script>
+const MAX_WIDTH = 450;
+const QUALITY = 0.20;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+const previewImg = document.getElementById('previewImg');
+const output = document.getElementById('output');
+const metaSize = document.getElementById('metaSize');
+const metaLen = document.getElementById('metaLen');
+const copyBtn = document.getElementById('copyBtn');
+const againWrap = document.getElementById('againWrap');
+const againLink = document.getElementById('againLink');
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+againLink.addEventListener('click', () => {
+  result.classList.remove('show');
+  againWrap.style.display = 'none';
+  dropZone.style.display = '';
+  fileInput.value = '';
+});
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+
+  dropZone.style.display = 'none';
+  status.classList.add('show');
+  status.textContent = 'Processing…';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_WIDTH) {
+        h = Math.round(h * (MAX_WIDTH / w));
+        w = MAX_WIDTH;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+
+      status.classList.remove('show');
+      previewImg.src = dataUrl;
+      output.value = dataUrl;
+      metaSize.textContent = w + ' × ' + h + 'px';
+      metaLen.textContent = dataUrl.length.toLocaleString();
+
+      result.classList.add('show');
+      againWrap.style.display = 'block';
+      copyBtn.textContent = 'Copy URL';
+      copyBtn.classList.remove('copied');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+copyBtn.addEventListener('click', () => {
+  output.select();
+  output.setSelectionRange(0, 999999);
+  navigator.clipboard.writeText(output.value).then(() => {
+    copyBtn.textContent = 'Copied ✓';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'Copy URL';
+      copyBtn.classList.remove('copied');
+    }, 1800);
+  }).catch(() => {
+    document.execCommand('copy');
+    copyBtn.textContent = 'Copied ✓';
+    copyBtn.classList.add('copied');
+  });
+});
+</script>
+
+</body>
+</html>
