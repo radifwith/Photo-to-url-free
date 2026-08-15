@@ -249,12 +249,15 @@
     <a id="againLink">Onno ekটা photo select korun</a>
   </div>
 
-  <footer>QUALITY 20 · MAX WIDTH 450PX · JPEG</footer>
+  <footer>AUTO-COMPRESSED · UNDER 15,000 CHARS · JPEG</footer>
 </div>
 
 <script>
 const MAX_WIDTH = 450;
-const QUALITY = 0.20;
+const START_QUALITY = 0.20;
+const MIN_QUALITY = 0.05;
+const MIN_WIDTH = 120;
+const TARGET_LEN = 15000; // target full URL length (chars)
 const BASE_URL = 'https://radifwith.github.io/Photo-to-url-free/view.html';
 
 const dropZone = document.getElementById('dropZone');
@@ -280,6 +283,43 @@ againLink.addEventListener('click', () => {
   fileInput.value = '';
 });
 
+function buildUrl(img, width, quality) {
+  const height = Math.round(img.height * (width / img.width));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, width, height);
+  const dataUrl = canvas.toDataURL('image/jpeg', quality);
+  const fullUrl = BASE_URL + '#' + encodeURIComponent(dataUrl);
+  return { dataUrl, fullUrl, width, height };
+}
+
+function compressUnderTarget(img) {
+  let width = Math.min(img.width, MAX_WIDTH);
+  let quality = START_QUALITY;
+  let best = buildUrl(img, width, quality);
+
+  // Step 1: lower quality first
+  while (best.fullUrl.length > TARGET_LEN && quality > MIN_QUALITY) {
+    quality = Math.max(MIN_QUALITY, quality - 0.02);
+    best = buildUrl(img, width, quality);
+  }
+
+  // Step 2: if still too big, shrink width too (reset quality a bit each shrink)
+  while (best.fullUrl.length > TARGET_LEN && width > MIN_WIDTH) {
+    width = Math.max(MIN_WIDTH, Math.round(width * 0.85));
+    quality = START_QUALITY;
+    best = buildUrl(img, width, quality);
+    while (best.fullUrl.length > TARGET_LEN && quality > MIN_QUALITY) {
+      quality = Math.max(MIN_QUALITY, quality - 0.02);
+      best = buildUrl(img, width, quality);
+    }
+  }
+
+  return best;
+}
+
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
 
@@ -291,33 +331,22 @@ function handleFile(file) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      let w = img.width;
-      let h = img.height;
-      if (w > MAX_WIDTH) {
-        h = Math.round(h * (MAX_WIDTH / w));
-        w = MAX_WIDTH;
-      }
+      // give the UI a tick to show "Processing…" before the (possibly heavy) loop runs
+      setTimeout(() => {
+        const { dataUrl, fullUrl, width, height } = compressUnderTarget(img);
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
+        status.classList.remove('show');
+        previewImg.src = dataUrl;
+        output.value = fullUrl;
+        metaSize.textContent = width + ' × ' + height + 'px';
+        metaLen.textContent = fullUrl.length.toLocaleString();
 
-      const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
-      const fullUrl = BASE_URL + '#' + encodeURIComponent(dataUrl);
-
-      status.classList.remove('show');
-      previewImg.src = dataUrl;
-      output.value = fullUrl;
-      metaSize.textContent = w + ' × ' + h + 'px';
-      metaLen.textContent = fullUrl.length.toLocaleString();
-
-      result.classList.add('show');
-      againWrap.style.display = 'block';
-      copyBtn.textContent = 'Copy Link';
-      copyBtn.classList.remove('copied');
-      document.getElementById('openLink').href = fullUrl;
+        result.classList.add('show');
+        againWrap.style.display = 'block';
+        copyBtn.textContent = 'Copy Link';
+        copyBtn.classList.remove('copied');
+        document.getElementById('openLink').href = fullUrl;
+      }, 30);
     };
     img.src = e.target.result;
   };
